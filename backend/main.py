@@ -2,13 +2,12 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from typing import List
 from models import Order, Truck
-
+from pydantic import BaseModel
 
 from cluster_engine import generate_route_clusters
 from dispatcher import assign_routes_to_fleet
-from pydantic import BaseModel
 
-app = FastAPI(title="Logistics Dispatch API")
+app = FastAPI(title="NEBULA Logistics Dispatch API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -40,8 +39,8 @@ def execute_dispatch(payload: DispatchPayload):
         clusters=generated_routes,
         fleet=payload.trucks
     )
+    
     return final_manifest
-
 
 @app.get("/")
 def health_check():
