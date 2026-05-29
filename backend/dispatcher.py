@@ -1,25 +1,34 @@
-from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Dict, Any
+from models import Truck, RouteCluster, Order
 
-class Order(BaseModel):
-    id: str
-    lat: float
-    lng: float
-    weight: float
-    priority: int = 1            
-    is_assigned: bool = False   
+def assign_routes_to_fleet(clusters: List[RouteCluster], fleet: List[Truck]) -> Dict[str, Any]:
+    sorted_clusters = sorted(clusters, key=lambda c: c.total_route_distance, reverse=True)
 
-class Truck(BaseModel):
-    id: str
-    max_weight_capacity: float
-    max_daily_distance: float
-    distance_used: float = 0.0   
+    assignments = {truck.id: [] for truck in fleet}
+    failed_orders = []
 
-class RouteCluster(BaseModel):
-    cluster_id: str
-    orders: List[Order]
-    total_weight: float
-    total_route_distance: float = 0.0  
-    
-    def is_valid(self, max_capacity: float) -> bool:
-        return self.total_weight <= max_capacity
+    for cluster in sorted_clusters:
+        assigned = False
+        
+        for truck in fleet:
+            remaining_distance = truck.max_daily_distance - truck.distance_used
+            
+            if cluster.total_route_distance <= remaining_distance:
+                assignments[truck.id].append(cluster)
+                truck.distance_used += cluster.total_route_distance
+                
+                for order in cluster.orders:
+                    order.is_assigned = True
+                    
+                assigned = True
+                break  
+        
+        if not assigned:
+            for order in cluster.orders:
+                order.priority += 1  
+                failed_orders.append(order)
+
+    return {
+        "fleet_assignments": assignments,
+        "failed_orders": failed_orders
+    }
